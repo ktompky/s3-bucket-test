@@ -1,0 +1,21 @@
+name: Deploy to S3 via CloudFormation
+on:
+  push:
+    branches: ["main"]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - uses: actions/checkout@v4
+    - uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::025158345392:role/GitHubActionsDeployRole
+        aws-region: us-east-1
+    - run: |
+        aws cloudformation deploy --template-file cloudformation/s3_static_site.yaml --stack-name StaticSiteStack --capabilities CAPABILITY_IAM
+    - run: |
+        BUCKET=$(aws cloudformation describe-stacks --stack-name StaticSiteStack --query "Stacks[0].Outputs[0].OutputValue" --output text)
+        aws s3 sync app/ s3://$BUCKET --delete
